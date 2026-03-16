@@ -26,11 +26,13 @@ Récupérez de l'énergie pour faire grandir vos robot-serpents et ayez les plus
 # ↪️ Mécanique Déplacement
 
 - **Cas 1** : Collision tête
+  
 Plateforme ou corps → tête détruite (≥3 segments)
+
 < 3 segments → snakebot supprimé
 
 - **Cas 2** : Énergie
-- 
+
 ✅ Snakebot grandit (nouveau segment queue)
 
 ✅ Énergie disparaît (case = vide après)
