@@ -27,9 +27,8 @@ Récupérez de l'énergie pour faire grandir vos robot-serpents et ayez les plus
 
 - **Cas 1** : Collision tête
   
-Plateforme ou corps → tête détruite (≥3 segments)
-
-< 3 segments → snakebot supprimé
+  - **Plateforme ou corps** → tête détruite (≥3 segments)
+  - **< 3 segments** → snakebot supprimé
 
 - **Cas 2** : Énergie
 
@@ -40,16 +39,21 @@ Plateforme ou corps → tête détruite (≥3 segments)
 ✅ Multi-têtes = tous mangent (énergie partagée !)
 
 # Phase Gravité
-- Après collisions → tous tombent jusqu'à support solide
-- Hors grille = suppression
 
-# 🎮 Commandes (stdout)
+- **Après collisions** → tous tombent jusqu'à support solide
+  
+- **Hors grille** = suppression
 
-**Directions** : `id UP | DOWN | LEFT | RIGHT`
-**Debug** : `id RIGHT Debug text`
-**Marqueur** : `MARK x y` (max 4/tour)
-**Pause** : `WAIT`
-**Séparateur** : `;`
+# 🎮 Commandes
+
+| Commandes | Stdout |
+| --------- | ------ |
+| **Directions** | `id UP | DOWN | LEFT | RIGHT` |
+| **Debug** | `id RIGHT Debug text` |
+| **Marqueur** | `MARK x y` (max 4/tour) |
+| **Pause** | `WAIT` |
+| **Séparateur** | `;` |
+
 Directions : UP(0,-1) | DOWN(0,1) | LEFT(-1,0) | RIGHT(1,0)
 
 # ⛔ Fin de Partie
