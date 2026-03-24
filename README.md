@@ -50,6 +50,6 @@ Python 3.11
 
 ## 🏆 Competition Results
 
-**Bronze League**: [Code Winner 🥉](code/1st version-Bronze)
+**Bronze League**: [Code Winner 🥉](code/1st-version-Bronze)
 
 **Silver League**: [Code top 16% 🥈](code/1st-version-Argent)
