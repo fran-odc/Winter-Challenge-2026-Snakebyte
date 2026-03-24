@@ -1,4 +1,6 @@
-# 🐍 Winter Challenge 2026 - Exotec Snakebots
+# Winter Challenge 2026 - Exotec Snakebots
+
+![🐍 Challenge](images/example-game.png)
 
 # 🎯 Goal
 Collect energy to grow your robot snakes and have the longest ones at game end.
