@@ -1,363 +1,416 @@
-# Position: 388 out of 1128
+# Position: 196 out of 1128
 
 import sys
+import time
 from collections import deque
+from itertools import product
 
 
-def debug(*args):
-    print(*args, file=sys.stderr, flush=True)
-
-
+# Direction mappings: name -> (dx, dy) offset
 DIRS = {'UP': (0, -1), 'DOWN': (0, 1), 'LEFT': (-1, 0), 'RIGHT': (1, 0)}
-# Scan order: favor UP first (gravity benefit), then horizontals, DOWN last
-SCAN = ['UP', 'LEFT', 'RIGHT', 'DOWN']
 
 
-def read_input():
-    line = sys.stdin.readline()
-    return line.strip() if line else ''
-
-
-# ---------------------------------------------------------------------------
-# PHYSICS: simulate gravity drop for a body
-# Returns final body position after falling, or None if it falls out of grid
-# ---------------------------------------------------------------------------
-def simulate_drop(body, solids, W, H):
-    """Drop body until supported. Returns final body or None if out of bounds."""
-    current = list(body)
-    for _ in range(H + 5):
-        # Check if any cell is out of horizontal bounds → invalid
-        if any(x < 0 or x >= W for x, y in current):
-            return None
-        # Check support: any cell has something solid directly below OR is on bottom
-        supported = False
-        for x, y in current:
-            below = (x, y + 1)
-            if y + 1 >= H or below in solids:
-                supported = True
-                break
-        if supported:
-            # Verify no cell is above the grid (that's fine) and no cell below grid
-            if any(y >= H for x, y in current):
-                return None
-            return current
-        # Fall one step
-        current = [(x, y + 1) for x, y in current]
-    return None
-
-
-# ---------------------------------------------------------------------------
-# SAFETY CHECK: is move d safe for snake sid?
-# ---------------------------------------------------------------------------
-def is_safe(sid, d, snakebots, energies, W, H, platforms, my_ids):
-    body = snakebots[sid]
-    head = body[0]
-    dx, dy = DIRS[d]
-    nx, ny = head[0] + dx, head[1] + dy
-
-
-    # Out of horizontal bounds is immediately fatal (gravity will drop it out)
-    if nx < 0 or nx >= W:
-        return False
-    # Hitting a platform wall
-    if ny >= 0 and (nx, ny) in platforms:
-        return False
-
-
-    ate = (nx, ny) in energies
-    new_body = [(nx, ny)] + list(body) if ate else [(nx, ny)] + list(body[:-1])
-
-
-    # Self-collision
-    if (nx, ny) in new_body[1:]:
-        return False
-
-
-    # Collision with any other snake (allies included - they're solid)
-    for other_sid, other_body in snakebots.items():
-        if other_sid != sid:
-            if (nx, ny) in other_body:
-                return False
-
-
-    # Build solids: platforms + energies (minus eaten one) + all other snakes
-    solids = set(platforms)
-    for e in energies:
-        if e != (nx, ny):
-            solids.add(e)
-    for other_sid, other_body in snakebots.items():
-        if other_sid != sid:
-            for cell in other_body:
-                solids.add(cell)
-
-
-    # Simulate gravity
-    final = simulate_drop(new_body, solids, W, H)
-    return final is not None
-
-
-# ---------------------------------------------------------------------------
-# FLOOD FILL: count reachable cells from a position
-# Used to avoid trapping ourselves
-# ---------------------------------------------------------------------------
-def flood_fill_count(start, solids, W, H, limit=200):
-    """BFS flood fill to count reachable empty cells from start."""
-    visited = {start}
-    queue = deque([start])
-    count = 0
-    while queue and count < limit:
-        x, y = queue.popleft()
-        count += 1
-        for dx, dy in [(0,-1),(0,1),(-1,0),(1,0)]:
-            nx, ny = x+dx, y+dy
-            if (nx, ny) not in visited and 0 <= nx < W and 0 <= ny < H and (nx, ny) not in solids:
-                visited.add((nx, ny))
-                queue.append((nx, ny))
-    return count
-
-
-# ---------------------------------------------------------------------------
-# BFS DISTANCE: shortest path distance to a target cell
-# ---------------------------------------------------------------------------
-def bfs_distance(start, target, solids, W, H):
-    """Manhattan-aware BFS distance. Returns dist or inf if unreachable."""
-    if start == target:
-        return 0
-    visited = {start}
-    queue = deque([(start, 0)])
-    while queue:
-        (x, y), dist = queue.popleft()
-        for dx, dy in [(0,-1),(0,1),(-1,0),(1,0)]:
-            nx, ny = x+dx, y+dy
-            pos = (nx, ny)
-            if pos == target:
-                return dist + 1
-            if pos not in visited and 0 <= nx < W and 0 <= ny < H and pos not in solids:
-                visited.add(pos)
-                queue.append((pos, dist + 1))
-    return float('inf')
-
-
-# ---------------------------------------------------------------------------
-# SCORE a move for a given snake
-# ---------------------------------------------------------------------------
-def score_move(sid, d, snakebots, energies, platforms, W, H, my_ids, opp_ids, turn):
-    body = snakebots[sid]
-    head = body[0]
-    dx, dy = DIRS[d]
-    nx, ny = head[0] + dx, head[1] + dy
-    new_pos = (nx, ny)
-
-
-    score = 0
-    ate = new_pos in energies
-
-
-    # --- Eating energy is the #1 priority ---
-    if ate:
-        score += 10000
-
-
-    # --- BFS distance to nearest energy ---
-    # Build passable solids for pathfinding (treat other snakes as obstacles)
-    nav_solids = set(platforms)
-    for e in energies:
-        if not ate or e != new_pos:
-            nav_solids.add(e)  # energies are solid (can land on them)
-    for other_sid, other_body in snakebots.items():
-        if other_sid != sid:
-            for cell in other_body:
-                nav_solids.add(cell)
-
-
-    if energies:
-        best_energy_dist = min(
-            abs(nx - e[0]) + abs(ny - e[1]) for e in energies
-        )
-        # Closer = better, with weight
-        score += max(0, 500 - best_energy_dist * 15)
-
-
-        # BFS to nearest energy (more accurate but slower - use sparingly)
-        nearest_e = min(energies, key=lambda e: abs(nx - e[0]) + abs(ny - e[1]))
-        bfs_dist = bfs_distance(new_pos, nearest_e, nav_solids, W, H)
-        if bfs_dist < float('inf'):
-            score += max(0, 300 - bfs_dist * 10)
-
-
-    # --- Flood fill: avoid trapping ourselves ---
-    # Build post-move body to evaluate space
-    new_body = [(nx, ny)] + list(body) if ate else [(nx, ny)] + list(body[:-1])
+def compute_energy_dists(energies, platforms, W, H):
+    """
+    Compute shortest distance from every free cell to nearest energy using BFS.
     
-    move_solids = set(platforms)
-    for e in energies:
-        if not ate or e != new_pos:
-            move_solids.add(e)
-    for other_sid, other_body in snakebots.items():
-        if other_sid != sid:
-            for cell in other_body:
-                move_solids.add(cell)
-    for cell in new_body:
-        move_solids.add(cell)
+    Args:
+        energies: Set of (x, y) tuples representing energy positions
+        platforms: Set of (x, y) tuples representing platform/wall positions
+        W, H: Grid width and height
+        
+    Returns:
+        Dictionary mapping (x, y) -> distance to nearest energy
+    """
+    dist = {}
+    queue = deque()
+    
+    # Start BFS from all energy positions simultaneously
+    for ex, ey in energies:
+        queue.append((ex, ey, 0))
+        dist[(ex, ey)] = 0
+    
+    # Expand outward from all energy sources
+    while queue:
+        x, y, d = queue.popleft()
+        for vx, vy in DIRS.values():
+            nx, ny = x + vx, y + vy
+            # Only traverse free cells (not platforms, within bounds)
+            if 0 <= nx < W and 0 <= ny < H and (nx, ny) not in platforms:
+                if (nx, ny) not in dist:
+                    dist[(nx, ny)] = d + 1
+                    queue.append((nx, ny, d + 1))
+    return dist
 
 
-    # Flood from head position after drop
-    space = flood_fill_count(new_pos, move_solids, W, H, limit=150)
-    score += space * 3
+def get_space(head, grid_solids, W, H, limit=35):
+    """
+    Calculate available free space around a position using flood fill.
+    Used to avoid tight spaces where snakes can get trapped.
+    
+    Args:
+        head: (x, y) position to check from
+        grid_solids: Set of blocked positions (platforms + snake bodies)
+        W, H: Grid dimensions
+        limit: Maximum cells to count (for performance)
+        
+    Returns:
+        Number of free cells reachable from head position
+    """
+    # Invalid starting position
+    if head in grid_solids or head[0] < 0 or head[0] >= W or head[1] < 0 or head[1] >= H:
+        return 0
+    
+    queue = deque([head])
+    visited = {head}
+    space = 0
+    
+    # Flood fill to count reachable free cells
+    while queue and space < limit:
+        x, y = queue.popleft()
+        space += 1
+        for vx, vy in DIRS.values():
+            nx, ny = x + vx, y + vy
+            if 0 <= nx < W and 0 <= ny < H and (nx, ny) not in grid_solids:
+                if (nx, ny) not in visited:
+                    visited.add((nx, ny))
+                    queue.append((nx, ny))
+    return space
 
 
-    # --- Opponent proximity: be aggressive early, cautious when small ---
-    body_size = len(body)
-    opp_dist = float('inf')
-    for opp_id in opp_ids:
-        if opp_id in snakebots:
-            oh = snakebots[opp_id][0]
-            d_opp = abs(nx - oh[0]) + abs(ny - oh[1])
-            opp_dist = min(opp_dist, d_opp)
+def get_valid_dirs(body):
+    """
+    Get valid movement directions for a snake.
+    A snake cannot move backward into its own neck.
+    
+    Args:
+        body: List of (x, y) positions, head first
+        
+    Returns:
+        List of valid direction names (e.g., ['UP', 'LEFT', 'RIGHT'])
+    """
+    head = body[0]
+    neck = body[1] if len(body) > 1 else None
+    valid = []
+    
+    for dname, (vx, vy) in DIRS.items():
+        nx, ny = head[0] + vx, head[1] + vy
+        # Cannot move into neck position (backward)
+        if neck and nx == neck[0] and ny == neck[1]:
+            continue
+        valid.append(dname)
+    
+    return valid if valid else ['UP']  # Fallback to UP if no valid moves
 
 
-    if opp_dist < float('inf'):
-        if body_size > 5:
-            # Aggressive: close to opponent is fine
-            if opp_dist < 2:
-                score -= 200
+def simulate_tick(snakes, energies, platforms, my_moves, opp_moves, W, H):
+    """
+    Simulate one game tick with given moves for all snakes.
+    Handles movement, collisions, energy consumption, and gravity.
+    
+    Args:
+        snakes: Dict {snake_id -> body} where body is list of (x,y) positions
+        energies: Set of (x, y) energy positions
+        platforms: Set of (x, y) platform positions
+        my_moves: Dict {my_snake_id -> (dx, dy)} for player's snakes
+        opp_moves: Dict {opp_snake_id -> (dx, dy)} for opponent's snakes
+        W, H: Grid dimensions
+        
+    Returns:
+        Tuple of (alive_snakes, remaining_energies) after simulation
+    """
+    new_heads = {}
+    ate = {}
+    
+    # Step 1: Move all snake heads in their direction
+    for sid, body in snakes.items():
+        head = body[0]
+        if sid in my_moves:
+            dx, dy = my_moves[sid]
         else:
-            # Small body: stay away
-            if opp_dist < 3:
-                score -= 500 * (3 - opp_dist)
-            else:
-                score += opp_dist * 10  # flee
+            dx, dy = opp_moves.get(sid, (0, -1))  # Default to UP if no move
+        nh = (head[0] + dx, head[1] + dy)
+        new_heads[sid] = nh
+        ate[sid] = (nh in energies)  # Check if new head position has energy
+    
+    # Step 2: Update bodies (grow if ate energy, otherwise tail moves forward)
+    new_bodies = {}
+    for sid, body in snakes.items():
+        if ate[sid]:
+            # Eating energy: grow by keeping tail
+            new_bodies[sid] = [new_heads[sid]] + body
+        else:
+            # Normal move: head advances, tail disappears
+            new_bodies[sid] = [new_heads[sid]] + body[:-1]
+    
+    # Step 3: Detect collisions (head hitting platform or another body segment)
+    crashed = set()
+    for sid, nb in new_bodies.items():
+        nh = nb[0]
+        
+        # Collision with platform
+        if nh in platforms:
+            crashed.add(sid)
+            continue
+        
+        # Collision with any body segment (including other snakes)
+        for other_sid, other_nb in new_bodies.items():
+            # Can't collide with own neck (just moved from there)
+            start_idx = 1 if other_sid == sid else 0
+            if nh in other_nb[start_idx:]:
+                crashed.add(sid)
+                break
+    
+    # Step 4: Handle crashed snakes (lose head, next segment becomes new head)
+    alive_snakes = {}
+    for sid, nb in new_bodies.items():
+        if sid in crashed:
+            # Snake loses head; survives only if 3+ segments remain
+            if len(nb) >= 3:
+                alive_snakes[sid] = nb[1:]  # Drop crashed head
+        else:
+            alive_snakes[sid] = nb
+    
+    # Step 5: Remove consumed energy
+    new_energies = set(energies)
+    for nh in new_heads.values():
+        if nh in new_energies:
+            new_energies.remove(nh)
+    
+    # Step 6: Apply gravity - snakes fall until supported
+    while True:
+        supported = set()
+        changed = True
+        
+        # Determine which snakes are supported (iteratively, as support can chain)
+        while changed:
+            changed = False
+            for sid, nb in alive_snakes.items():
+                if sid in supported:
+                    continue
+                
+                is_supp = False
+                # Check if any body segment is supported
+                for bx, by in nb:
+                    below = (bx, by + 1)
+                    
+                    # Supported by platform or energy
+                    if below in platforms or below in new_energies:
+                        is_supp = True
+                        break
+                    
+                    # Supported by another snake (must be already supported)
+                    for osid, onb in alive_snakes.items():
+                        if osid == sid:  # Cannot support self
+                            continue
+                        if osid in supported and below in onb:
+                            is_supp = True
+                            break
+                    
+                    if is_supp:
+                        break
+                
+                if is_supp:
+                    supported.add(sid)
+                    changed = True
+        
+        # Move unsupported snakes down one cell
+        moved = False
+        for sid in list(alive_snakes.keys()):
+            if sid not in supported:
+                alive_snakes[sid] = [(bx, by + 1) for bx, by in alive_snakes[sid]]
+                moved = True
+                # Remove snakes that fall off the bottom
+                if any(by >= H for _, by in alive_snakes[sid]):
+                    del alive_snakes[sid]
+        
+        # Exit when no more falling occurs
+        if not moved:
+            break
+    
+    return alive_snakes, new_energies
 
 
-    # --- Prefer UP slightly (gravity advantage: going up gives more fall room) ---
-    if d == 'UP':
-        score += 30
-
-
-    # --- Avoid going DOWN (falls into walls faster) ---
-    if d == 'DOWN':
-        score -= 20
-
-
-    # --- Stay horizontally centered (avoid edges) ---
-    center_x = W // 2
-    dist_from_center = abs(nx - center_x)
-    score -= dist_from_center * 2
-
-
-    # --- Vertical position: prefer middle height ---
-    center_y = H // 2
-    dist_from_center_y = abs(ny - center_y)
-    score -= dist_from_center_y
-
-
+def evaluate(snakes, energies, my_ids, opp_ids, dist_map, W, H, platforms):
+    """
+    Evaluate game state quality from player's perspective.
+    Higher score = better position.
+    
+    Args:
+        snakes: Current snake positions
+        energies: Remaining energy positions
+        my_ids: List of player's snake IDs
+        opp_ids: List of opponent's snake IDs
+        dist_map: Precomputed distances to nearest energy
+        W, H: Grid dimensions
+        platforms: Platform positions
+        
+    Returns:
+        Score (float) - higher is better for player
+    """
+    # Count total body segments for each player
+    my_len = sum(len(b) for sid, b in snakes.items() if sid in my_ids)
+    opp_len = sum(len(b) for sid, b in snakes.items() if sid in opp_ids)
+    
+    # Game-ending states
+    if my_len == 0:
+        return -1e9  # Player lost
+    if opp_len == 0:
+        return 1e9   # Player won
+    
+    # Base score: length difference is most important
+    score = (my_len - opp_len) * 100000
+    
+    # If no energy left, only length matters
+    if not energies:
+        return score
+    
+    # Build set of all occupied cells
+    grid_solids = set(platforms)
+    for b in snakes.values():
+        grid_solids.update(b)
+    
+    # Evaluate each snake's position
+    for sid, b in snakes.items():
+        head = b[0]
+        
+        # Get distance to nearest energy
+        if head[0] < 0 or head[0] >= W or head[1] < 0 or head[1] >= H:
+            d = 1000  # Out of bounds
+        else:
+            d = dist_map.get(head, 1000)  # Distance to nearest energy
+        
+        if sid in my_ids:
+            # Player's snakes: penalize distance to energy, reward good positioning
+            score -= d * 15                              # Closer to energy = better
+            score += get_space(head, grid_solids, W, H) * 3  # Avoid tight spaces
+            score += (H - head[1])                       # Prefer higher positions
+            score -= abs(head[0] - W // 2) * 1.5        # Prefer center of map
+        else:
+            # Opponent's snakes: slight penalty if they're close to energy
+            score += d * 5
+    
     return score
 
 
-# ---------------------------------------------------------------------------
-# MAIN
-# ---------------------------------------------------------------------------
 def main():
-    my_id = int(read_input())
-    W = int(read_input())
-    H = int(read_input())
-
-
-    platforms = set()
-    grid = []
-    for y in range(H):
-        row = read_input()
-        grid.append(row)
-        for x, ch in enumerate(row):
-            if ch == '#':
-                platforms.add((x, y))
-
-
-    spp = int(read_input())
-    my_ids = [int(read_input()) for _ in range(spp)]
-    opp_ids = [int(read_input()) for _ in range(spp)]
-
-
-    debug(f"Player {my_id}, W={W} H={H}, my_ids={my_ids}, opp_ids={opp_ids}")
-
-
-    turn = 0
-
-
-    while True:
-        line = read_input()
-        if not line:
-            break
-        turn += 1
-
-
-        power_count = int(line)
-        energies = set()
-        for _ in range(power_count):
-            x, y = map(int, read_input().split())
-            energies.add((x, y))
-
-
-        snakebot_count = int(read_input())
-        snakebots = {}
-        for _ in range(snakebot_count):
-            parts = read_input().split()
-            sid = int(parts[0])
-            body = [tuple(map(int, c.split(','))) for c in parts[1].split(':')]
-            snakebots[sid] = body
-
-
-        active = [sid for sid in my_ids if sid in snakebots]
-        if not active:
-            print("WAIT", flush=True)
-            continue
-
-
-        actions = []
-
-
-        for sid in sorted(active):
-            body = snakebots[sid]
-            head = body[0]
-
-
-            # Get all safe moves
-            safe_moves = [d for d in SCAN
-                          if is_safe(sid, d, snakebots, energies, W, H, platforms, my_ids)]
-
-
-            if not safe_moves:
-                # Last resort: try any direction that doesn't immediately wall-crash
-                # Output UP as fallback
-                actions.append(f"{sid} UP")
-                debug(f"  Snake {sid}: NO SAFE MOVES, defaulting UP")
+    """
+    Main game loop: read input, simulate moves, choose best strategy.
+    """
+    try:
+        # === INITIALIZATION PHASE ===
+        my_id_str = sys.stdin.readline()
+        if not my_id_str:
+            return
+        my_id = int(my_id_str)
+        W = int(sys.stdin.readline())
+        H = int(sys.stdin.readline())
+        
+        # Read grid: identify platform positions
+        platforms = set()
+        for y in range(H):
+            for x, ch in enumerate(sys.stdin.readline().strip()):
+                if ch == '#':
+                    platforms.add((x, y))
+        
+        # Read snake team assignments
+        spp = int(sys.stdin.readline())
+        my_ids = [int(sys.stdin.readline()) for _ in range(spp)]
+        opp_ids = [int(sys.stdin.readline()) for _ in range(spp)]
+        
+        # === GAME LOOP ===
+        while True:
+            line = sys.stdin.readline()
+            if not line:
+                break
+            
+            # Read energy positions
+            energies = set()
+            for _ in range(int(line)):
+                x, y = map(int, sys.stdin.readline().split())
+                energies.add((x, y))
+            
+            # Read current snake positions
+            snakes = {}
+            for _ in range(int(sys.stdin.readline())):
+                parts = sys.stdin.readline().split()
+                sid = int(parts[0])
+                # Parse body: "x,y:x,y:x,y" -> [(x,y), (x,y), (x,y)]
+                snakes[sid] = [tuple(map(int, c.split(','))) for c in parts[1].split(':')]
+            
+            # Start timing for this turn
+            start_t = time.perf_counter()
+            
+            # Check which of our snakes are still alive
+            active_my = [sid for sid in my_ids if sid in snakes]
+            if not active_my:
+                print("WAIT", flush=True)
                 continue
-
-
-            if len(safe_moves) == 1:
-                best_move = safe_moves[0]
+            
+            # Precompute distance map to nearest energy
+            dist_map = compute_energy_dists(energies, platforms, W, H)
+            
+            # === OPPONENT MOVE PREDICTION ===
+            # Assume opponents continue in their current direction
+            opp_moves = {}
+            for sid in opp_ids:
+                if sid not in snakes:
+                    continue
+                body = snakes[sid]
+                head = body[0]
+                neck = body[1] if len(body) > 1 else None
+                
+                # Calculate current direction from head->neck vector
+                dx, dy = (head[0] - neck[0], head[1] - neck[1]) if neck else (0, -1)
+                
+                # If continuing would hit a wall, pick any other valid direction
+                if (head[0] + dx, head[1] + dy) in platforms:
+                    for vx, vy in DIRS.values():
+                        if neck and (head[0] + vx, head[1] + vy) == neck:
+                            continue
+                        if (head[0] + vx, head[1] + vy) not in platforms:
+                            dx, dy = vx, vy
+                            break
+                
+                opp_moves[sid] = (dx, dy)
+            
+            # === DECISION MAKING ===
+            # Get valid directions for each of our snakes
+            my_valid_dirs = [get_valid_dirs(snakes[sid]) for sid in active_my]
+            
+            # Try all combinations of moves for our snakes
+            best_score = -float('inf')
+            best_moves = None
+            
+            for combo in product(*my_valid_dirs):
+                # Convert direction names to (dx, dy) offsets
+                my_moves_dict = {active_my[i]: DIRS[combo[i]] for i in range(len(active_my))}
+                
+                # Simulate this move combination
+                ns, ne = simulate_tick(snakes, energies, platforms, my_moves_dict, opp_moves, W, H)
+                
+                # Evaluate resulting state
+                score = evaluate(ns, ne, my_ids, opp_ids, dist_map, W, H, platforms)
+                
+                # Track best move so far
+                if score > best_score:
+                    best_score = score
+                    best_moves = combo
+                
+                # Time limit: must respond within 45ms to avoid timeout
+                if time.perf_counter() - start_t > 0.045:
+                    break
+            
+            # === OUTPUT ===
+            # Send chosen moves to game engine
+            if best_moves:
+                print(";".join([str(sid) + " " + best_moves[i] for i, sid in enumerate(active_my)]), flush=True)
             else:
-                # Score each safe move
-                scored = []
-                for d in safe_moves:
-                    s = score_move(sid, d, snakebots, energies, platforms, W, H, my_ids, opp_ids, turn)
-                    scored.append((s, d))
-                scored.sort(reverse=True)
-                best_move = scored[0][1]
-                debug(f"  Snake {sid} head={head} scores: {scored} → {best_move}")
-
-
-            actions.append(f"{sid} {best_move}")
-
-
-        # Add debug markers for nearest energy
-        marks = []
-        for e in list(energies)[:4]:
-            marks.append(f"MARK {e[0]} {e[1]}")
-
-
-        output_parts = actions + marks[:4 - len(actions) if len(actions) < 4 else 0]
-        print(";".join(actions), flush=True)
+                # Fallback if no moves evaluated (shouldn't happen)
+                print(";".join([str(sid) + " UP" for sid in active_my]), flush=True)
+    
+    except EOFError:
+        pass  # Game ended
 
 
 if __name__ == '__main__':
