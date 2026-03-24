@@ -47,3 +47,9 @@ Python 3.11
 - **Team coordination**: Greedy team scoring (scales better than full combinatorial search)
 - **No runtime ML**: Development used AI tools, but gameplay runs pure algorithms (fits per-turn time limits)
 - **Web-only workflow**: All development via GitHub web editor (no local setup required)
+
+## 🏆 Competition Results
+
+**Bronze League**: [Code Winner 🥉](code/1st version-Bronze)
+
+**Silver League**: [Code top 16% 🥈](code/1st-version-Argent)
