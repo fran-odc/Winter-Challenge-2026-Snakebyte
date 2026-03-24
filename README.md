@@ -1,83 +1,126 @@
 # 🐍 Winter Challenge 2026 - Exotec Snakebots
 
-# 🎯 Objectif
-Récupérez de l'énergie pour faire grandir vos robot-serpents et ayez les plus longs en fin de partie.
+# 🎯 Goal
+Collect energy to grow your robot snakes and have the longest ones at game end.
 
-# 🏗️ Grille & Plateformes
+[📂 Official Contest Website](https://www.codingame.com/contests/winter-challenge-2026-exotec) 
 
-✅ Grille vue de côté avec plateformes infranchissables
+[📂 Game Rules](https://www.codingame.com/contests/winter-challenge-2026-exotec) 
 
-✅ Cases : vide | plateforme | corps snakebot | énergie
+# 🏗️ Grid & Platforms
 
-✅ Gravité : snakebot tombe si pas support solide
+✅ Side-view grid with impassable platforms  
 
-✅ Solides : plateformes + énergie + autres snakebots
+✅ Cells: empty | platform | snakebot body | energy
+
+✅ Gravity: snakebot falls if no solid support
+
+✅ Solid surfaces: platforms + energy + other snakebots
+
 
 # 🐍 Snakebots
 
-✅ Multi-segments adjacents (tête + corps)
+✅ Multi-adjacent segments (head + body)
 
-✅ Déplacement simultané tous snakebots
+✅ Simultaneous movement for all snakebots
 
-✅ Direction initiale : HAUT
+✅ Initial direction: UP
 
-✅ Continuent direction précédente par défaut
+✅ Continue previous direction by default
 
-# ↪️ Mécanique Déplacement
 
-- **Cas 1** : Collision tête
+# ↪️ Movement Mechanics
+
+- **Case 1**: Head collision
+
+   - **Platform or body** → head destroyed (≥3 segments)
+
+  - **< 3 segments** → snakebot eliminated
+
+- **Case 2**: Energy
+
+  ✅ Snakebot grows (new tail segment)
+
+  ✅ Energy disappears (cell = empty after)
+
+  ✅ Multiple heads = all eat (shared energy!)
+
   
-  - **Plateforme ou corps** → tête détruite (≥3 segments)
-  - **< 3 segments** → snakebot supprimé
+# Phase Gravity
 
-- **Cas 2** : Énergie
-
-✅ Snakebot grandit (nouveau segment queue)
-
-✅ Énergie disparaît (case = vide après)
-
-✅ Multi-têtes = tous mangent (énergie partagée !)
-
-# Phase Gravité
-
-- **Après collisions** → tous tombent jusqu'à support solide
+- **After collisions** → all fall until solid support
+- **Out of bounds** = elimination
   
-- **Hors grille** = suppression
 
-# 🎮 Commandes
+# 🎮 Commands
 
-| Commandes | Stdout |
+| Commands | Stdout |
 | --------- | ------ |
-| **Directions** | `id UP | DOWN | LEFT | RIGHT` |
+| **Directions** | `id UP \| DOWN \| LEFT \| RIGHT` |
 | **Debug** | `id RIGHT Debug text` |
-| **Marqueur** | `MARK x y` (max 4/tour) |
+| **Marker** | `MARK x y` (max 4/turn) |
 | **Pause** | `WAIT` |
-| **Séparateur** | `;` |
+| **Separator** | `;` |
 
-Directions : UP(0,-1) | DOWN(0,1) | LEFT(-1,0) | RIGHT(1,0)
+Directions: UP(0,-1) \| DOWN(0,1) \| LEFT(-1,0) \| RIGHT(1,0)
 
-# ⛔ Fin de Partie
 
-❌ Tous snakebots supprimés
+# ⛔  Game End
 
-❌ Plus d'énergie  
+❌ All snakebots eliminated
 
-❌ 200 tours max
+❌ No energy left
 
-# 🏆 Victoire/Défaite
+❌ 200 turns max
 
-✅ **VICTOIRE** : Plus de segments totaux
 
-❌ **DÉFAITE** : Timeout | commandes invalides
+# 🏆 Victory/Defeat
 
-# 🔧 Débogage
+✅ **VICTORY**: Most total segments
+
+❌ **DEFEAT**: Timeout \| invalid commands
+
+
+# 🔧 Debugging
 
 🔸 MARK x y (viewer)
 
-🔸 Survol grille (infos cases)
+🔸 Hover grid (cell info)
 
-🔸 ⚙️ Options viewer
+🔸 ⚙️ Viewer options
 
-🔸 Clavier : ESPACE (pause) | Flèches (frame par frame)
+🔸 Keyboard: SPACE (pause) \| Arrow keys (frame by frame)
 
-[📂 Source Officiel](https://www.codingame.com/contests/winter-challenge-2026-exotec) 
+## 🧠 Solution Approach
+
+- Iterative improvement using insights from Vertex AI, Claude, and ChatGPT.
+- Identified key weaknesses through arena losses, implemented targeted fixes via 3 PRs directly on GitHub web interface.
+
+## 🛠️ Tech Stack
+
+Python 3.11
+- No external dependencies
+- Grid simulation + BFS pathfinding
+
+## 🚀 How to Run & Test
+
+**Arena deployment:**
+- Copy code to official arena → battle other players → analyze losses
+- Paste losing code into GitHub web editor → reproduce scenarios → fix weaknesses
+
+**Testing:**
+- Arena validation: Replayed 10 lost matches, confirmed win rate improvement
+- Integration: Multi-snake coordination
+
+**Validation:** 
+- Arena: Replayed 10 lost matches → confirmed through win rate improvement
+- Integration: Multi-snake coordination validated via scenario replay
+
+## ⚖️ Design Trade-offs
+
+- **Correctness > Speed**: Full validation before moves (safer)
+- **Simple opponent model**: Predicts 1-2 moves ahead (fast, good enough for most races)
+- **Risky moves allowed**: Scores high-reward positions despite temporary gravity risk
+- **Team coordination**: Greedy team scoring (scales better than full combinatorial search)
+- **No runtime ML**: Development used AI tools, but gameplay runs pure algorithms (fits per-turn time limits)
+- **Web-only workflow**: All development via GitHub web editor (no local setup required)
