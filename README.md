@@ -12,7 +12,7 @@ Collect energy to grow your robot snakes and have the longest ones at game end.
 
 [📂 Official Contest Website](https://www.codingame.com/contests/winter-challenge-2026-exotec) 
 
-[📂 Game Rules](docs/Game-Rules.md) 
+[📂 Game Rules](docs/Game-Rules.md?plain=1) 
 
 ## 🧠 Solution Approach
 
@@ -50,9 +50,9 @@ Python 3.11
 
 ## 🏆 Competition Results
 
-🥉 **Bronze League**: [Code Winner](code/1st-version-Bronze.md)
+🥉 **Bronze League**: [Code Winner](code/1st-version-Bronze.md?plain=1)
 
-**Silver League**: [Code #183 of a total of 1,119 🥈](code/1st-version-Argent.md)
+**Silver League**: [Code #183 of a total of 1,119 🥈](code/1st-version-Argent.md?plain=1)
 
 ## Contact
 LinkedIn : [Francesca Oliveira](https://www.linkedin.com/in/oliveirafrancesca/)
