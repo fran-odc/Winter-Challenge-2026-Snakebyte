@@ -52,4 +52,4 @@ Python 3.11
 
 🥉 **Bronze League**: [Code Winner](code/1st-version-Bronze)
 
-**Silver League**: [Code top 16% 🥈](code/1st-version-Argent)
+**Silver League**: [Code #183 of a total of 1,119 🥈](code/1st-version-Argent)
