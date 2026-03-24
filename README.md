@@ -5,7 +5,7 @@ Collect energy to grow your robot snakes and have the longest ones at game end.
 
 [📂 Official Contest Website](https://www.codingame.com/contests/winter-challenge-2026-exotec) 
 
-[📂 Game Rules](docs/Game-Rules.md) 
+[📂 Game Rules](docs/Game-Rules) 
 
 ## 🧠 Solution Approach
 
