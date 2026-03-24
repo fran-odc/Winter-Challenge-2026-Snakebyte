@@ -1,5 +1,10 @@
 # Winter Challenge 2026 - Exotec Snakebots
 
+[![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Profile views](https://views.igorkowalczyk.dev/api/badge/fran-odc?style=flat)
+[![Python](https://img.shields.io/badge/Python-3.11-blueviolet.svg)](https://www.python.org/)
+[![GitHub branch protection](https://img.shields.io/badge/Branch_Protected-main-green.svg)](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches)
+
 ![🐍 Challenge](images/example-game.png)
 
 # 🎯 Goal
