@@ -1,4 +1,4 @@
-# Position: 183 out of 1119
+# Position: 183th (out of 1119)
 
 import sys
 import time
