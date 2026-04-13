@@ -76,8 +76,8 @@ Directions: UP(0,-1) \| DOWN(0,1) \| LEFT(-1,0) \| RIGHT(1,0)
 
 🔸 MARK x y (viewer)
 
-🔸 Hover grid (cell info)
+🔸 Hover over the grid to see cell information.
 
 🔸 ⚙️ Viewer options
 
-🔸 Keyboard: SPACE (pause) \| Arrow keys (frame by frame)
+🔸 Keyboard: SPACE to pause, arrow keys for frame-by-frame navigation.
