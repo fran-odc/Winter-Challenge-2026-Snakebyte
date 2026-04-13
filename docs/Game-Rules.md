@@ -48,7 +48,7 @@
 | Commands | Stdout |
 | --------- | ------ |
 | **Directions** | `id UP \| DOWN \| LEFT \| RIGHT` |
-| **Debug** | `id RIGHT Debug text` |
+| **Debug** | `id RIGHT // debug text` |
 | **Marker** | `MARK x y` (max 4/turn) |
 | **Pause** | `WAIT` |
 | **Separator** | `;` |
