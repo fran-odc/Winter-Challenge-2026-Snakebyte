@@ -57,6 +57,6 @@ Python 3.11
 ## Contact
 LinkedIn : [Francesca Oliveira](https://www.linkedin.com/in/oliveirafrancesca/)
 
-Email : fran.odc@pm.me
+Email : contest_francesca@pm.me
 
 *Dernière mise à jour : Mars 2026*
